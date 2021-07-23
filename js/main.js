@@ -1,20 +1,3 @@
-/*new Swiper('.swiper-container', {
-	loop: true,
-	navigation: {
-		nextEl: '.arrow',
-	},
-	breakpoints: {
-		320: {
-			slidesPerView: 1,
-			spaceBetween: 20
-		},
-		541: {
-			slidesPerView: 2,
-			spaceBetween: 40
-		}
-	}
-});*/
-
 const getElement = (tagName, classNames, attributes) => {
 	const element = document.createElement(tagName);
 	if (classNames) {
@@ -60,6 +43,17 @@ const createHeader = ({title, header: {logo, menu, social}}) => {
 
 		nav.append(...allMenuItems);
 		wrapper.append(nav);
+
+		// бургер меню
+		const menuButton = getElement('button', ['menu-button']);
+		menuButton.addEventListener('click', () => {
+			menuButton.classList.toggle('menu-button-active');
+			wrapper.classList.toggle('header-active');
+			wrapper.classList.add('animated');
+			wrapper.classList.toggle('fadeInRight');
+		});
+		container.append(menuButton);
+		//
 	}
 
 	if (social) {
@@ -79,25 +73,14 @@ const createHeader = ({title, header: {logo, menu, social}}) => {
 		wrapper.append(socialWrapper);
 	}
 
-	// бургер меню
-	const menuButton = getElement('button', ['menu-button']);
-	menuButton.addEventListener('click', function () {
-		menuButton.classList.toggle('menu-button-active');
-		wrapper.classList.toggle('header-active');
-		wrapper.classList.add('animated');
-		wrapper.classList.toggle('fadeInRight');
-	});
-	//
-
 	header.append(container);
 	container.append(wrapper);
-	container.append(menuButton);
 
 
 	return header;
 };
 
-const createMain = ({title, main: {genre, rating, description, trailer}}) => {
+const createMain = ({title, main: {genre, rating, description, trailer, slider}}) => {
 
 	const main = getElement('main');
 	const container = getElement('div', ['container']);
@@ -161,70 +144,140 @@ const createMain = ({title, main: {genre, rating, description, trailer}}) => {
 		mainContent.append(trailerImageLink);
 	}
 
+	if (slider) {
+		const sliderSeriesBlock = getElement('div', ['series']);
+		const swiperContainer = getElement('div', ['swiper-container']);
+		const swiperWrapper = getElement('div', ['swiper-wrapper']);
+		const arrow = getElement('button', ['arrow']);
+
+
+		const slides = slider.map(item => {
+			const swiperSlide = getElement('div', ['swiper-slide']);
+			const card = getElement('figure', ['card']);
+			const cardImage = getElement('img', ['card-img'], {
+				src: item.img,
+				alt: (item.title ? item.title + ' ' : '') + (item.subtitle ? item.subtitle : ''),
+			});
+			card.append(cardImage);
+
+			if (item.title || item.subtitle) {
+				const cardDescription = getElement('figcaption', ['card-description']);
+				cardDescription.innerHTML = `
+				${item.subtitle ? `<p class="card-subtitle">${item.subtitle}</p>` : ''}
+				${item.title ? `<p class="card-title">${item.title}</p>` : ''}
+				`;
+				card.append(cardDescription);
+			}
+			swiperSlide.append(card);
+			return swiperSlide;
+		});
+
+		swiperWrapper.append(...slides);
+		swiperContainer.append(swiperWrapper);
+		sliderSeriesBlock.append(swiperContainer, arrow);
+		container.append(sliderSeriesBlock);
+
+		new Swiper(swiperContainer, {
+			loop: true,
+			navigation: {
+				nextEl: arrow,
+			},
+			breakpoints: {
+				320: {
+					slidesPerView: 1,
+					spaceBetween: 20,
+				},
+				541: {
+					slidesPerView: 2,
+					spaceBetween: 40,
+				},
+			},
+		});
+
+	}
+
 	return main;
+};
+
+const createFooter = ({footer: {menu, copyright}}) => {
+	const footer = getElement('footer', ['footer']);
+	const container = getElement('div', ['container']);
+	const footerContent = getElement('div', ['footer-content']);
+
+	if (copyright) {
+		const leftContent = getElement('div', ['left']);
+		const span = getElement('span', ['copyright'], {textContent: copyright});
+		leftContent.appendChild(span);
+		footerContent.append(leftContent);
+	}
+	if (menu) {
+		const rightContent = getElement('div', ['right']);
+		const footerMenu = getElement('div', ['footer-menu']);
+		const menuItems = menu.map(item => {
+			return getElement('a', ['footer-link'], {
+				href: item.link,
+				textContent: item.title,
+			});
+		});
+		footerMenu.append(...menuItems);
+		rightContent.append(footerMenu);
+		footerContent.append(rightContent);
+	}
+	container.append(footerContent);
+	footer.append(container);
+	return footer;
 };
 
 const moviesConstructor = (selector, options) => {
 	const app = document.querySelector(selector);
 	app.classList.add('body-app');
+	// настраиваем цвета макета
+	app.style.color = options.fontColor || '';
+	app.style.backgroundColor = options.backgroundColor || '';
+	if (options.subColor) {
+		document.documentElement.style.setProperty('--sub-color', options.subColor);
+	}
+
 	app.style.backgroundImage = options.background ? `url("${options.background}")` : '';
 
-	const favicon = getElement('link', [], {href: "witcher/logo.png", rel: "icon"});
-	document.head.append(favicon);
+	if (options.favicon) {
+		// определяем формат файла, чтобы изменить тип svg
+		const index = options.favicon.lastIndexOf('.');
+		const type = options.favicon.substring(index + 1);
+
+		const favicon = getElement('link', [], {
+			href: options.favicon,
+			rel: "icon",
+			type: 'image/' + (type === 'svg' ? 'svg-xml' : type),
+		});
+		document.head.append(favicon);
+	}
 
 	document.title = options.title + ' - официальный сайт сериала';
 
 	if (options.header) {
 		app.append(createHeader(options));
 	}
-
 	if (options.main) {
 		app.append(createMain(options));
+	}
+	if (options.footer) {
+		app.append(createFooter(options));
 	}
 };
 
 
-moviesConstructor('.app', {
-	title: 'Ведьмак',
-	background: 'witcher/background.jpg',
-	header: {
-		logo: 'witcher/logo.png',
-		social: [
-			{
-				title: 'Twitter',
-				link: 'https://twitter.com',
-				image: 'witcher/social/twitter.svg',
-			},
-			{
-				title: 'Instagram',
-				link: 'https://instagram.com',
-				image: 'witcher/social/instagram.svg',
-			},
-			{
-				title: 'Facebook',
-				link: 'https://www.facebook.com',
-				image: 'witcher/social/facebook.svg',
-			},
-		],
-		menu: [
-			{
-				title: 'Описание',
-				link: '#',
-			},
-			{
-				title: 'Трейлер',
-				link: '#',
-			},
-			{
-				title: 'Отзывы',
-				link: '#',
-			},
-		],
-	},
-	main: {
-		genre: '2019,фэнтези',
-		rating: '8',
-		description: 'Ведьмак Геральт, мутант и убийца чудовищ, на своей верной лошади по кличке Плотва путешествует по Континенту. За тугой мешочек чеканных монет этот мужчина избавит вас от всякой настырной нечисти — хоть от чудищ болотных, оборотней и даже заколдованных принцесс.',
-		trailer: 'https://www.youtube.com/watch?v=P0oJqfLzZzQ',
-	},
-});
+// запрос базы данных
+const getData = async () => {
+	const data = await fetch('data.json');
+	if (data.ok) {
+		return data.json();
+	} else {
+		throw new Error(`Данные не были получены. Ошибка ${data.status} ${data.statusText}`);
+	}
+};
+
+getData().then(data => moviesConstructor('.app', data));
+
+
+
